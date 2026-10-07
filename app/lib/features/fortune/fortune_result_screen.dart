@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/legal_links.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/glossary_text.dart';
 import '../profile/user_repository.dart';
 import 'fortune_api.dart';
 import 'fortune_models.dart';
@@ -103,10 +105,13 @@ class _FortuneResultScreenState extends ConsumerState<FortuneResultScreen> {
         children: [
           Text('Q. ${chat.question}', style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          Text(
-            answer.isEmpty ? '답을 불러오지 못했습니다. 다른 질문을 눌러 보세요.' : answer,
-            style: const TextStyle(fontSize: 16, height: 1.45),
-          ),
+          if (answer.isEmpty)
+            const Text(
+              '답을 불러오지 못했습니다. 다른 질문을 눌러 보세요.',
+              style: TextStyle(fontSize: 16, height: 1.45),
+            )
+          else
+            GlossaryText(answer, style: const TextStyle(fontSize: 16, height: 1.45)),
         ],
       ),
     );
@@ -131,7 +136,7 @@ class _FortuneResultScreenState extends ConsumerState<FortuneResultScreen> {
             style: const TextStyle(color: AppColors.inkSoft),
           ),
           const SizedBox(height: 12),
-          Text(_record.summary, style: const TextStyle(fontSize: 16, height: 1.45)),
+          GlossaryText(_record.summary, style: const TextStyle(fontSize: 16, height: 1.45)),
           for (final section in _record.sections) ...[
             const SizedBox(height: 18),
             Text(
@@ -139,7 +144,7 @@ class _FortuneResultScreenState extends ConsumerState<FortuneResultScreen> {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.crimson),
             ),
             const SizedBox(height: 6),
-            Text(section.body, style: const TextStyle(fontSize: 16, height: 1.45)),
+            GlossaryText(section.body, style: const TextStyle(fontSize: 16, height: 1.45)),
           ],
           const SizedBox(height: 24),
           Text(
@@ -188,6 +193,12 @@ class _FortuneResultScreenState extends ConsumerState<FortuneResultScreen> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Text('쌀알로 물어보기'),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            '밑줄 친 말을 누르면 뜻을 볼 수 있습니다.\n$entertainmentDisclaimer',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 12, color: AppColors.inkSoft, height: 1.4),
           ),
         ],
       ),

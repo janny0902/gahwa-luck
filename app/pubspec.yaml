@@ -1,7 +1,7 @@
 name: gahwa_luck
 description: 가화만사성 — 우리집 궁합, 운세, 사주
 publish_to: "none"
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.13.4

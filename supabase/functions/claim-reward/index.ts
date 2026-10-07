@@ -4,6 +4,9 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const auth = await requireUser(req);
   if (isResponse(auth)) return auth;
+  if ((Deno.env.get("REWARD_CLIENT_CLAIM") ?? "").toLowerCase() === "off") {
+    return json({ error: "광고 보상은 광고 서버 확인 후 지급됩니다" }, 410);
+  }
   let body: { kind?: string };
   try {
     body = await req.json();

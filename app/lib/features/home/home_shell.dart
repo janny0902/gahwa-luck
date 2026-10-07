@@ -10,6 +10,7 @@ import '../ads/reward_ad_button.dart';
 import '../auth/auth_providers.dart';
 import '../fortune/fortune_models.dart';
 import '../fortune/fortune_result_screen.dart';
+import '../fortune/fortune_runner.dart';
 import '../fortune/fortune_wizard_screen.dart';
 import '../profile/members_screen.dart';
 import '../profile/profile_models.dart';
@@ -39,6 +40,8 @@ class HomeShell extends ConsumerStatefulWidget {
 }
 
 class _HomeShellState extends ConsumerState<HomeShell> {
+  bool _quickBusy = false;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +61,7 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final amulet = preview ? 3 : appUser?.amuletCount;
     final rice = preview ? 12 : appUser?.riceCount;
     final name = preview ? '미리보기' : (appUser?.myProfile.name ?? '');
+    final passDays = _passDaysLeft(appUser);
 
     return HanjiBackground(
       child: Scaffold(
@@ -102,16 +106,75 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                     style: TextStyle(fontSize: 15, color: AppColors.inkSoft),
                   ),
                   const SizedBox(height: 14),
-                  Row(
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       CurrencyBadge(kind: CurrencyKind.amulet, count: amulet),
-                      const SizedBox(width: 10),
                       CurrencyBadge(kind: CurrencyKind.rice, count: rice),
+                      if (passDays != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.crimson,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '패스 D-$passDays',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                          ),
+                        ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    passDays != null
+                        ? '매일 00시에 부적 5개, 쌀알 15개까지 채워 드립니다.'
+                        : '매일 00시에 부적 1개, 쌀알 3개까지 채워 드립니다.',
+                    style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                   ),
                 ],
               ),
             ),
+            if (!preview)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Material(
+                  color: AppColors.crimson,
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: _quickBusy ? null : () => _quickFortune(appUser),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.wb_sunny_outlined, color: Colors.white, size: 30),
+                          SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '오늘의 운세 · 복채 내기',
+                                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w800),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  '부적 1개 · 입력 없이 내 프로필로 바로',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: Colors.white),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Expanded(
               child: GridView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -186,6 +249,38 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     if (user == null || !user.passActive) return false;
     final expired = user.passExpiredAt;
     return expired == null || expired.isAfter(DateTime.now());
+  }
+
+  int? _passDaysLeft(AppUser? user) {
+    if (!_passOn(user)) return null;
+    final expired = user!.passExpiredAt;
+    if (expired == null) return null;
+    final hours = expired.difference(DateTime.now()).inHours;
+    return (hours / 24).ceil();
+  }
+
+  Future<void> _quickFortune(AppUser? user) async {
+    final profile = user?.myProfile;
+    if (profile == null || !profile.isComplete) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('프로필의 이름, 성별, 생년월일을 먼저 저장해 주세요')),
+      );
+      return;
+    }
+    setState(() => _quickBusy = true);
+    await runFortune(
+      context,
+      ref,
+      category: 'my_fortune',
+      profile: profile,
+      input: {
+        ...baseFortuneInput(profile),
+        'period': '오늘',
+        'theme': '전체',
+        'quick': true,
+      },
+    );
+    if (mounted) setState(() => _quickBusy = false);
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {

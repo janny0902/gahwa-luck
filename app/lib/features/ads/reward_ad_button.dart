@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../profile/profile_models.dart';
 import '../profile/user_repository.dart';
 import '../wallet/wallet_api.dart';
 
@@ -24,8 +26,8 @@ String _adUnit(String envKey, String testId, String releaseId) {
   return unit;
 }
 
-Future<void> showRewardChoices(BuildContext context, WidgetRef ref) async {
-  final kind = await showModalBottomSheet<String>(
+Future<void> showRewardChoices(BuildContext context, WidgetRef ref, {String? preset}) async {
+  final kind = preset ?? await showModalBottomSheet<String>(
     context: context,
     showDragHandle: true,
     builder: (ctx) {
@@ -59,12 +61,15 @@ Future<void> showRewardChoices(BuildContext context, WidgetRef ref) async {
   }
   final messenger = ScaffoldMessenger.of(context);
   final adUnit = _adUnit('ADMOB_REWARD_ID', _testReward, _releaseReward);
+  final userId = Supabase.instance.client.auth.currentUser?.id;
+  // Google 샘플 광고는 서버 검증 콜백을 보내지 않는다.
+  final useServerVerification = !adUnit.contains('3940256099942544') && userId != null;
   var earned = false;
   RewardedAd.load(
     adUnitId: adUnit,
     request: const AdRequest(),
     rewardedAdLoadCallback: RewardedAdLoadCallback(
-      onAdLoaded: (rewarded) {
+      onAdLoaded: (rewarded) async {
         rewarded.fullScreenContentCallback = FullScreenContentCallback(
           onAdDismissedFullScreenContent: (ad) {
             ad.dispose();
@@ -81,14 +86,29 @@ Future<void> showRewardChoices(BuildContext context, WidgetRef ref) async {
             );
           },
         );
+        AppUser? before;
+        try {
+          before = await ref.read(appUserProvider.future);
+        } catch (_) {}
+        if (useServerVerification) {
+          await rewarded.setServerSideOptions(
+            ServerSideVerificationOptions(userId: userId, customData: kind),
+          );
+        }
+        final done = kind == 'amulet' ? '부적 1개를 받았습니다' : '쌀알 3개를 받았습니다';
         rewarded.show(onUserEarnedReward: (ad, reward) async {
           earned = true;
           try {
+            if (useServerVerification) {
+              final arrived = await _waitForReward(ref, kind, before);
+              messenger.showSnackBar(
+                SnackBar(content: Text(arrived ? done : '광고 확인 중입니다. 잠시 후 수량이 늘어납니다')),
+              );
+              return;
+            }
             await ref.read(walletApiProvider).claimReward(kind);
             ref.invalidate(appUserProvider);
-            messenger.showSnackBar(
-              SnackBar(content: Text(kind == 'amulet' ? '부적 1개를 받았습니다' : '쌀알 3개를 받았습니다')),
-            );
+            messenger.showSnackBar(SnackBar(content: Text(done)));
           } catch (error) {
             messenger.showSnackBar(SnackBar(content: Text('$error')));
           }
@@ -101,6 +121,20 @@ Future<void> showRewardChoices(BuildContext context, WidgetRef ref) async {
       },
     ),
   );
+}
+
+Future<bool> _waitForReward(WidgetRef ref, String kind, AppUser? before) async {
+  for (var attempt = 0; attempt < 6; attempt++) {
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
+    ref.invalidate(appUserProvider);
+    final now = await ref.read(appUserProvider.future);
+    if (before == null || now == null) continue;
+    final grew = kind == 'amulet'
+        ? now.amuletCount > before.amuletCount
+        : now.riceCount > before.riceCount;
+    if (grew) return true;
+  }
+  return false;
 }
 
 class HomeBanner extends StatefulWidget {

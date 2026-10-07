@@ -1,6 +1,21 @@
 import { askGemini, envelopeRule, followupAnswerText, isThinAnswer, normalizeSuggestedQuestions } from "../_shared/gemini.ts";
 import { corsHeaders, isResponse, json, requireUser } from "../_shared/http.ts";
 
+function firstSentence(text: string): string {
+  const trimmed = text.replace(/\s+/g, " ").trim();
+  const match = trimmed.match(/^.+?[.!?。](?=\s|$)/);
+  return (match ? match[0] : trimmed).slice(0, 200);
+}
+
+function readingSummary(
+  stored: { title?: string; summary?: string } | null,
+  fallback: string,
+): string {
+  const title = (stored?.title ?? "").trim();
+  const sentence = firstSentence(stored?.summary ?? fallback);
+  return title ? `${title}: ${sentence}` : sentence;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const auth = await requireUser(req);
@@ -44,14 +59,18 @@ Deno.serve(async (req) => {
     const category = stored?.menu === "thing_name"
       ? "thing_name"
       : String(fortune.data.category ?? "my_fortune");
+    const last = turns.at(-1);
     const userPrompt = JSON.stringify({
-      previous_reading: fortune.data.result_json ?? fortune.data.result_text,
-      earlier: turns.slice(-4),
+      reading_summary: readingSummary(
+        fortune.data.result_json as { title?: string; summary?: string } | null,
+        String(fortune.data.result_text ?? ""),
+      ),
+      last_turn: last ? { question: last.user_question, answer: last.ai_answer } : null,
       question,
     });
-    const system = `이전 풀이에 이어서, 질문의 답을 바로 말한다.
+    const system = `이전 풀이 요약과 직전 문답에 이어서, 질문의 답을 바로 말한다.
 첫 문장은 질문에 대한 결론이다. "알아보겠습니다", "살펴볼게요", "정리해 드릴게요"처럼 답을 미루지 않는다.
-summary에 쉬운 말로 6~10문장 적는다. 이전 풀이에 있던 장소, 방향, 사람, 이름을 이어서 구체적으로 말한다.
+summary에 쉬운 말로 6~10문장 적는다. 요약과 직전 문답에 나온 장소, 방향, 사람, 이름이 있으면 이어서 구체적으로 말한다.
 sections는 1개. heading은 "이어서", body는 summary와 겹치지 않는 실천 두세 문장.
 전문 용어는 쓰지 않는다.
 ${envelopeRule}`;

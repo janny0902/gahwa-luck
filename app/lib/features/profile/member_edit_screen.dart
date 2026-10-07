@@ -9,9 +9,10 @@ import 'profile_models.dart';
 import 'profile_pickers.dart';
 
 class MemberEditScreen extends ConsumerStatefulWidget {
-  const MemberEditScreen({super.key, this.existing});
+  const MemberEditScreen({super.key, this.existing, this.initialKind});
 
   final Member? existing;
+  final String? initialKind;
 
   @override
   ConsumerState<MemberEditScreen> createState() => _MemberEditScreenState();
@@ -45,7 +46,7 @@ class _MemberEditScreenState extends ConsumerState<MemberEditScreen> {
         ? m.mbti
         : '모름';
     _hourLabel = ProfilePickers.hourLabelOf(m?.birthTime ?? '');
-    final kind = m?.kind ?? 'family';
+    final kind = m?.kind ?? widget.initialKind ?? 'family';
     _kind = ProfilePickers.kinds.any((k) => k.$1 == kind) ? kind : 'family';
     _isLunar = m?.isLunar ?? false;
     _birth = ProfilePickers.parseBirth(m?.birthDate ?? '');
