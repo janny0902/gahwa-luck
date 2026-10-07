@@ -1,0 +1,47 @@
+name: gahwa_luck
+description: 가화만사성 — 우리집 궁합, 운세, 사주
+publish_to: "none"
+version: 1.0.0+2
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Backend / config
+  supabase_flutter: ^2.9.1
+  flutter_dotenv: ^5.2.1
+
+  # Ads / IAP (코드 연동은 T6/T7, 의존성만 T1 예약)
+  google_mobile_ads: ^9.1.0
+  in_app_purchase: ^3.2.1
+
+  # UX helpers
+  go_router: ^14.8.1
+  intl: ^0.20.2
+  url_launcher: ^6.3.2
+  saju: ^0.1.1
+  klc: ^0.1.0
+  timezone: ^0.11.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  riverpod_generator: ^2.6.5
+  build_runner: ^2.4.15
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env
+    - assets/name_hanja.json

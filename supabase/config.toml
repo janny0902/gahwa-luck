@@ -1,0 +1,19 @@
+project_id = "lfruzdnubvluzsubnwsp"
+
+[functions.generate-fortune]
+verify_jwt = true
+
+[functions.ask-followup]
+verify_jwt = true
+
+[functions.daily-grant]
+verify_jwt = true
+
+[functions.claim-reward]
+verify_jwt = true
+
+[functions.verify-iap]
+verify_jwt = true
+
+[functions.delete-account]
+verify_jwt = true

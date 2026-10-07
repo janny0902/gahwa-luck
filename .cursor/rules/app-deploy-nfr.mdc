@@ -1,0 +1,31 @@
+---
+description: 앱 배포 공통 비기능·아키텍처·보안·IAP (templates/RULE.md와 동기화)
+alwaysApply: true
+---
+
+# App Deploy NFR (가화만사성)
+
+상세 원문은 `templates/RULE.md` / `RULE.md`를 따른다. 요약 강제 사항만 아래에 둔다.
+
+## 질문 우선
+기획·구현·UX·콘솔 값이 조금만 애매해도 추측하지 말고 사용자에게 먼저 묻는다. 모를 땐 선택지를 제시해 같이 고른다. 답이 오기 전에는 되돌리기 비싼 결정을 진행하지 않는다.
+
+## 아키텍처
+- Flutter 클라이언트 + Supabase(Auth/DB/Edge Functions) + Gemini는 Edge 경유만
+- 만세력은 클라이언트 계산 후 서버로 전달
+- 결제: Google Play **인앱결제(IAP)** 만, 서버 purchaseToken 검증 후 재화/패스 지급
+
+## 보안
+- API Key·service_role·Play 서비스계정 → 클라이언트/깃 금지
+- RLS 필수, 재화 증감은 Edge Function 트랜잭션만
+- **민감정보**(건강·생체·사상·성생활·범죄 등) DB/로그 저장 금지
+- 일반 개인정보(이름·생년월일 등)는 목적 범위 내 DB 저장 + 탈퇴 삭제 가능
+
+## 광고·스토어
+- AdMob: 배너/리워드/네이티브, 개발은 테스트 ID
+- 면책 문구, 계정 탈퇴, 개인정보 처리방침 URL 필수
+
+## UX
+- 선택형 UI 우선, 큰 터치 영역, LLM 대기 시 강제 전면닫기 UX 지양
+
+새 프로젝트에는 `templates/RULE.md`를 루트 `RULE.md` 또는 `.cursor/rules/`로 복사한다.
