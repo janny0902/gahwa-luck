@@ -1,6 +1,10 @@
 const MODEL = "gemini-3.5-flash-lite";
 
-export async function askGemini(system: string, user: string): Promise<Record<string, unknown>> {
+export async function askGemini(
+  system: string,
+  user: string,
+  temperature = 0.95,
+): Promise<Record<string, unknown>> {
   const key = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GEMINI_API_KEY_FREE") ?? "";
   if (!key) {
     throw new Error("GEMINI_API_KEY 시크릿이 없습니다");
@@ -14,7 +18,7 @@ export async function askGemini(system: string, user: string): Promise<Record<st
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts: [{ text: user }] }],
         generationConfig: {
-          temperature: 0.75,
+          temperature,
           maxOutputTokens: 4096,
           responseMimeType: "application/json",
         },
@@ -71,22 +75,55 @@ function questionText(item: unknown): string {
   return "";
 }
 
-export function normalizeSuggestedQuestions(raw: unknown, category = "my_fortune"): string[] {
-  const fallback = easyFollowups[category] ?? easyFollowups.my_fortune;
+const stockQuestions = new Set(Object.values(easyFollowups).flat());
+
+export function normalizeSuggestedQuestions(
+  raw: unknown,
+  category = "my_fortune",
+  fallback = true,
+): string[] {
   const kept: string[] = [];
   if (Array.isArray(raw)) {
     for (const item of raw) {
       const q = questionText(item).replace(/^\d+[.)]\s*/, "");
-      if (!q || q.length > 28 || HARD_TERMS.test(q)) continue;
+      // 예시 문장을 그대로 베끼면 어느 운세나 같은 질문이 된다.
+      if (!q || q.length > 32 || HARD_TERMS.test(q) || stockQuestions.has(q)) continue;
       if (!kept.includes(q)) kept.push(q);
       if (kept.length >= 3) break;
     }
   }
-  for (const q of fallback) {
+  if (!fallback) return kept;
+  for (const q of easyFollowups[category] ?? easyFollowups.my_fortune) {
     if (kept.length >= 3) break;
     if (!kept.includes(q)) kept.push(q);
   }
   return kept.slice(0, 3);
+}
+
+export async function connectedQuestions(
+  result: Record<string, unknown>,
+  category: string,
+): Promise<string[]> {
+  const first = normalizeSuggestedQuestions(result.suggested_questions, category, false);
+  if (first.length >= 3) return first;
+  try {
+    const retry = await askGemini(
+      `아래 풀이에서만 이어지는 질문 3개를 suggested_questions에 넣어라.
+각 질문은 풀이에 나온 장소, 방향, 사람, 시간, 물건 중 하나를 그대로 포함한다.
+어느 글에도 붙는 일반 질문은 쓰지 않는다.
+${envelopeRule}`,
+      followupAnswerText(result).slice(0, 700),
+    );
+    const merged = normalizeSuggestedQuestions(
+      [...first, ...(Array.isArray(retry.suggested_questions) ? retry.suggested_questions : [])],
+      category,
+      false,
+    );
+    if (merged.length >= 3) return merged;
+    return normalizeSuggestedQuestions(merged, category, true);
+  } catch {
+    return normalizeSuggestedQuestions(first, category, true);
+  }
 }
 
 export function followupAnswerText(parsed: Record<string, unknown>): string {
@@ -114,10 +151,10 @@ export const envelopeRule = `
 - title: 짧은 제목
 - summary: 결론 자체. 3~5문장. 예고나 인사로 시작하지 않는다.
 - sections: [{ "heading": "소제목", "body": "본문" }]
-- suggested_questions: 누구나 바로 눌러볼 수 있는 아주 쉬운 한 줄 질문 3개.
-  18자 안팎, 일상 말투. 전문 용어(오행, 십신, 용신, 편재, 충, 합, 간지 등) 금지.
-  좋은 예: "오늘 조심할 일은?", "돈 흐름은 어때요?", "쉬는 게 나을까요?"
-  나쁜 예: "편재와 식신의 합이 재물 흐름에 미치는 영향은?"
+- suggested_questions: 이번 풀이에서만 이어지는 쉬운 질문 3개.
+  각 질문은 이번 summary나 sections에 실제로 나온 장소, 방향, 사람, 시간, 물건 중 하나를 그대로 포함한다.
+  32자 안, 일상 말투. 전문 용어(오행, 십신, 용신, 편재, 충, 합, 간지 등) 금지.
+  "오늘 조심할 일은?", "돈 흐름은 어때요?", "쉬는 게 나을까요?"처럼 어느 운세에나 붙는 질문은 쓰지 않는다.
 어조는 담백한 설명체(~해요). 의료 진단, 범죄, 성생활, 사상 고백을 요구하거나 단정하지 않는다.
 건강은 휴식과 생활 리듬 수준만 말한다.
 첫 문장은 결론이다. "알아보겠습니다", "살펴볼게요", "정리해 드릴게요", "확인해 보겠습니다", "도움이 되길 바랍니다" 같은 빈말은 쓰지 않는다.

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/legal_links.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/glossary_text.dart';
+import '../../core/widgets/hanji_background.dart';
 import '../profile/user_repository.dart';
 import 'fortune_api.dart';
 import 'fortune_models.dart';
@@ -120,7 +121,9 @@ class _FortuneResultScreenState extends ConsumerState<FortuneResultScreen> {
   @override
   Widget build(BuildContext context) {
     final category = FortuneCategory.byId(_record.category);
-    return Scaffold(
+    return HanjiBackground(
+      calm: true,
+      child: Scaffold(
       appBar: AppBar(title: Text(category.label)),
       body: ListView(
         controller: _scroll,
@@ -202,6 +205,7 @@ class _FortuneResultScreenState extends ConsumerState<FortuneResultScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 }
@@ -212,7 +216,9 @@ class FortuneHistoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(_historyProvider);
-    return Scaffold(
+    return HanjiBackground(
+      calm: true,
+      child: Scaffold(
       appBar: AppBar(title: const Text('지난 운세')),
       body: history.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -244,6 +250,7 @@ class FortuneHistoryScreen extends ConsumerWidget {
             },
           );
         },
+      ),
       ),
     );
   }

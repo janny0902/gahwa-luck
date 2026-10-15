@@ -46,6 +46,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return HanjiBackground(
+      animated: true,
       child: Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(

@@ -26,7 +26,7 @@ void main() {
         child: const MaterialApp(home: MembersScreen()),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.text('등록한 가족·지인이 없습니다.'), findsOneWidget);
   });
 }

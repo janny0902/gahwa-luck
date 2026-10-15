@@ -7,6 +7,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/hanji_background.dart';
 import '../profile/user_repository.dart';
 import '../wallet/wallet_api.dart';
 import 'shop_products.dart';
@@ -135,7 +136,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   @override
   Widget build(BuildContext context) {
     final sections = <String>['부적', '쌀알', '패스'];
-    return Scaffold(
+    return HanjiBackground(
+      calm: true,
+      child: Scaffold(
       appBar: AppBar(title: const Text('상점')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -170,6 +173,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                 ],
               ],
             ),
+      ),
     );
   }
 }
@@ -192,8 +196,12 @@ class _ProductTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: AppColors.beigeDeep,
+      color: const Color(0xFFFFF8EE).withValues(alpha: 0.72),
       elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: AppColors.gold.withValues(alpha: 0.5)),
+      ),
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),

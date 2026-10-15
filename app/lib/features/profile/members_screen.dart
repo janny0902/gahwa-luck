@@ -36,6 +36,7 @@ class _MembersScreenState extends ConsumerState<MembersScreen> {
     final async = ref.watch(membersProvider);
 
     return HanjiBackground(
+      calm: true,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(

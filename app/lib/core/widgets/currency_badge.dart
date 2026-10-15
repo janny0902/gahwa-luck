@@ -10,29 +10,32 @@ class CurrencyBadge extends StatelessWidget {
     super.key,
     required this.kind,
     required this.count,
+    this.selected = false,
+    this.onTap,
   });
 
   final CurrencyKind kind;
   final int? count;
+  final bool selected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final label = kind == CurrencyKind.amulet ? '부적' : '쌀알';
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF8EE).withValues(alpha: 0.92),
+    return Material(
+      color: const Color(0xFFFFF8EE).withValues(alpha: selected ? 1 : 0.92),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.7)),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.ink.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        side: BorderSide(
+          color: (selected ? AppColors.crimson : AppColors.gold).withValues(alpha: 0.7),
+        ),
       ),
-      child: Row(
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+          child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
@@ -70,6 +73,8 @@ class CurrencyBadge extends StatelessWidget {
             ],
           ),
         ],
+          ),
+        ),
       ),
     );
   }

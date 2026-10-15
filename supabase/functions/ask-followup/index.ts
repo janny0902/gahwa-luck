@@ -1,19 +1,20 @@
-import { askGemini, envelopeRule, followupAnswerText, isThinAnswer, normalizeSuggestedQuestions } from "../_shared/gemini.ts";
+import { askGemini, connectedQuestions, envelopeRule, followupAnswerText, isThinAnswer } from "../_shared/gemini.ts";
 import { corsHeaders, isResponse, json, requireUser } from "../_shared/http.ts";
 
-function firstSentence(text: string): string {
-  const trimmed = text.replace(/\s+/g, " ").trim();
-  const match = trimmed.match(/^.+?[.!?。](?=\s|$)/);
-  return (match ? match[0] : trimmed).slice(0, 200);
-}
-
 function readingSummary(
-  stored: { title?: string; summary?: string } | null,
+  stored: { title?: string; summary?: string; sections?: unknown } | null,
   fallback: string,
 ): string {
   const title = (stored?.title ?? "").trim();
-  const sentence = firstSentence(stored?.summary ?? fallback);
-  return title ? `${title}: ${sentence}` : sentence;
+  const summary = (stored?.summary ?? fallback).replace(/\s+/g, " ").trim().slice(0, 500);
+  const headings = Array.isArray(stored?.sections)
+    ? stored.sections.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const heading = (item as { heading?: string }).heading?.trim() ?? "";
+      return heading ? [heading] : [];
+    })
+    : [];
+  return [title, summary, headings.join(", ")].filter(Boolean).join("\n");
 }
 
 Deno.serve(async (req) => {
@@ -68,10 +69,12 @@ Deno.serve(async (req) => {
       last_turn: last ? { question: last.user_question, answer: last.ai_answer } : null,
       question,
     });
-    const system = `이전 풀이 요약과 직전 문답에 이어서, 질문의 답을 바로 말한다.
-첫 문장은 질문에 대한 결론이다. "알아보겠습니다", "살펴볼게요", "정리해 드릴게요"처럼 답을 미루지 않는다.
-summary에 쉬운 말로 6~10문장 적는다. 요약과 직전 문답에 나온 장소, 방향, 사람, 이름이 있으면 이어서 구체적으로 말한다.
-sections는 1개. heading은 "이어서", body는 summary와 겹치지 않는 실천 두세 문장.
+    const system = `이전 풀이와 직전 문답에 이어서, 이번 질문의 답을 바로 말한다.
+첫 문장은 이 질문에만 해당하는 결론이다. "알아보겠습니다", "살펴볼게요", "정리해 드릴게요"처럼 답을 미루지 않는다.
+summary에 쉬운 말로 6~10문장 적는다. 풀이에 나온 장소, 방향, 사람, 시간, 물건을 답 안에 다시 쓴다.
+"천천히 하세요", "무리하지 마세요", "마음을 편하게"처럼 어떤 질문에도 붙는 말로 끝내지 않는다.
+직전 답과 첫 문장, 권하는 행동을 다르게 쓴다.
+sections는 1개. heading은 질문의 핵심 단어, body는 summary와 겹치지 않는 실천 두세 문장.
 전문 용어는 쓰지 않는다.
 ${envelopeRule}`;
     let result = await askGemini(system, userPrompt);
@@ -83,7 +86,7 @@ ${envelopeRule}`;
       );
       answer = followupAnswerText(result);
     }
-    result.suggested_questions = normalizeSuggestedQuestions(result.suggested_questions, category);
+    result.suggested_questions = await connectedQuestions(result, category);
     const saved = await admin.from("fortune_chats").insert({
       fortune_id: fortuneId,
       turn_index: nextTurn,

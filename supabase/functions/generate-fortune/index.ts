@@ -2,16 +2,18 @@ import {
   askGemini,
   depthRule,
   envelopeRule,
+  connectedQuestions,
   followupAnswerText,
   isThinAnswer,
-  normalizeSuggestedQuestions,
 } from "../_shared/gemini.ts";
 import { corsHeaders, isResponse, json, requireUser } from "../_shared/http.ts";
 
 const categoryGuide: Record<string, string> = {
   my_fortune: `내 운세. 고른 기간과 테마에 맞춰 오늘 움직일 템포, 유리한 방향과 장소, 돈·일·마음 중 지금 손댈 일을 구체적으로 적는다.
 input.quick이 true면 홈에서 바로 누른 오늘의 운세다. 오늘 하루를 한 장으로 요약하고 sections는 3개만 짧게 쓴다.
-sections 예: "지금 템포", "가야 할 쪽", "오늘 할 일".`,
+today_kst의 요일과 four_pillars의 오늘 기둥을 본문에 반영한다.
+recent_readings에 있는 문장, 장소, 방향, 할 일을 반복하지 않고, 어제와 다른 행동 하나를 고른다.
+heading은 "지금 템포", "가야 할 쪽", "오늘 할 일"을 그대로 쓰지 않는다.`,
   family: `가족궁합. input.period(오늘, 이번 주, 이번 달, 올해) 동안을 기준으로 적는다.
 누가 누구와 어디서 엇갈리는지, 그 기간에 건네면 좋은 말 한 문장, 건드리지 말 화제를 적는다. 서열을 깎거나 탓하지 않는다.
 sections 예: "잘 맞는 지점", "건넬 말", "잠시 둘 이야기".`,
@@ -66,8 +68,28 @@ Deno.serve(async (req) => {
   if (!spend?.ok) return json({ error: spend?.error ?? "부적을 쓰지 못했습니다" }, 402);
 
   try {
+    const recent = await admin.from("fortunes")
+      .select("result_json")
+      .eq("user_id", userId)
+      .eq("category", category === "thing_name" ? "naming" : category)
+      .order("created_at", { ascending: false })
+      .limit(3);
+    const recentReadings = (recent.data ?? []).flatMap((row) => {
+      const stored = row.result_json as { title?: string; summary?: string; menu?: string } | null;
+      if (category === "thing_name" && stored?.menu !== "thing_name") return [];
+      const title = (stored?.title ?? "").trim();
+      const summary = (stored?.summary ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+      const line = [title, summary].filter(Boolean).join(": ");
+      return line ? [line] : [];
+    });
+    const todayKst = new Intl.DateTimeFormat("ko-KR", {
+      timeZone: "Asia/Seoul",
+      dateStyle: "full",
+    }).format(new Date());
     const userPrompt = JSON.stringify({
       category,
+      today_kst: todayKst,
+      recent_readings: recentReadings,
       input: body.input ?? {},
       four_pillars: body.four_pillars ?? {},
     });
@@ -79,7 +101,7 @@ Deno.serve(async (req) => {
         userPrompt,
       );
     }
-    result.suggested_questions = normalizeSuggestedQuestions(result.suggested_questions, category);
+    result.suggested_questions = await connectedQuestions(result, category);
     result.menu = category;
     const title = String(result.title ?? "운세");
     const summary = String(result.summary ?? "");

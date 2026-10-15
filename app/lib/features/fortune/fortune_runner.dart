@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/manseryeok/four_pillars.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/hanji_background.dart';
 import '../ads/reward_ad_button.dart';
 import '../profile/profile_models.dart';
 import '../profile/profile_pickers.dart';
@@ -125,7 +126,8 @@ class _FortuneLoadingScreenState extends State<FortuneLoadingScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HanjiBackground(
+      child: Scaffold(
       appBar: AppBar(title: const Text('운세를 보는 중')),
       body: ListView(
         padding: const EdgeInsets.all(24),
@@ -159,6 +161,7 @@ class _FortuneLoadingScreenState extends State<FortuneLoadingScreen>
           const SizedBox(height: 20),
           const NativeLoadingAd(),
         ],
+      ),
       ),
     );
   }

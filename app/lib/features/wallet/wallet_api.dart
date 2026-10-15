@@ -7,8 +7,14 @@ class WalletApi {
   WalletApi(this._client);
   final SupabaseClient _client;
 
-  Future<void> dailyGrant() async {
-    await _client.functions.invoke('daily-grant');
+  /// 오늘 지급이 이미 끝났으면 true. 이번에 수량이 바뀌었으면 false.
+  Future<bool> dailyGrant() async {
+    final response = await _client.functions.invoke('daily-grant');
+    final data = response.data;
+    if (data is Map && data['error'] != null) {
+      throw Exception(data['error'].toString());
+    }
+    return data is Map && data['already'] == true;
   }
 
   Future<void> verifyPurchase({

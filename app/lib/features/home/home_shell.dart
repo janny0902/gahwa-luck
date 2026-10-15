@@ -26,32 +26,47 @@ class HomeShell extends ConsumerStatefulWidget {
   final bool preview;
 
   static const _menus = <_MenuItem>[
-    _MenuItem('내 운세', Icons.explore_outlined),
-    _MenuItem('가족궁합', Icons.home_outlined),
-    _MenuItem('동료궁합', Icons.groups_outlined),
-    _MenuItem('날 받기', Icons.event_available_outlined),
-    _MenuItem('이름받기', Icons.badge_outlined),
-    _MenuItem('애견·차 이름', Icons.pets),
-    _MenuItem('꿈해몽', Icons.nightlight_outlined),
+    _MenuItem('내 운세', Icons.explore_outlined, '運'),
+    _MenuItem('가족궁합', Icons.home_outlined, '家'),
+    _MenuItem('동료궁합', Icons.groups_outlined, '友'),
+    _MenuItem('날 받기', Icons.event_available_outlined, '日'),
+    _MenuItem('이름받기', Icons.badge_outlined, '名'),
+    _MenuItem('애견·차 이름', Icons.pets, '愛'),
+    _MenuItem('꿈해몽', Icons.nightlight_outlined, '夢'),
   ];
 
   @override
   ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends ConsumerState<HomeShell> {
+class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserver {
   bool _quickBusy = false;
+  CurrencyKind? _currencyHint;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _grantIfNewDay();
+  }
+
+  /// 자정을 넘긴 뒤 앱으로 돌아오면 지급한다. 이미 받은 날에는 수량을 다시 그리지 않는다.
+  Future<void> _grantIfNewDay() async {
     if (widget.preview) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      try {
-        await ref.read(walletApiProvider).dailyGrant();
-        ref.invalidate(appUserProvider);
-      } catch (_) {}
-    });
+    try {
+      final already = await ref.read(walletApiProvider).dailyGrant();
+      if (!already) ref.invalidate(appUserProvider);
+    } catch (_) {}
   }
 
   @override
@@ -64,12 +79,24 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     final passDays = _passDaysLeft(appUser);
 
     return HanjiBackground(
+      animated: true,
       child: Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: const Text('가화만사성'),
         actions: [
+          IconButton(
+            tooltip: '상점',
+            onPressed: preview
+                ? null
+                : () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(builder: (_) => const ShopScreen()),
+                    );
+                  },
+            icon: const Icon(Icons.storefront_outlined),
+          ),
           IconButton(
             tooltip: '설정',
             onPressed: () => _openSettings(context, ref),
@@ -111,8 +138,18 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                     runSpacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      CurrencyBadge(kind: CurrencyKind.amulet, count: amulet),
-                      CurrencyBadge(kind: CurrencyKind.rice, count: rice),
+                      CurrencyBadge(
+                        kind: CurrencyKind.amulet,
+                        count: amulet,
+                        selected: _currencyHint == CurrencyKind.amulet,
+                        onTap: () => _toggleCurrencyHint(CurrencyKind.amulet),
+                      ),
+                      CurrencyBadge(
+                        kind: CurrencyKind.rice,
+                        count: rice,
+                        selected: _currencyHint == CurrencyKind.rice,
+                        onTap: () => _toggleCurrencyHint(CurrencyKind.rice),
+                      ),
                       if (passDays != null)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -127,6 +164,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                         ),
                     ],
                   ),
+                  if (_currencyHint != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      _currencyHint == CurrencyKind.amulet
+                          ? '부적은 운세, 궁합, 날 받기, 이름, 꿈해몽 1회에 1개 씁니다.'
+                          : '쌀알은 운세 결과의 추가 질문 1회에 1개 씁니다. 한 운세당 5번까지입니다.',
+                      style: const TextStyle(fontSize: 14, height: 1.4, color: AppColors.ink),
+                    ),
+                  ],
                   const SizedBox(height: 8),
                   Text(
                     passDays != null
@@ -187,43 +233,20 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                 itemCount: HomeShell._menus.length,
                 itemBuilder: (context, index) {
                   final item = HomeShell._menus[index];
-                  return Material(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(14),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(14),
-                      onTap: preview
-                          ? null
-                          : () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => FortuneWizardScreen(
-                                    category: FortuneCategory.all[index],
-                                  ),
+                  return _MenuTile(
+                    item: item,
+                    order: index,
+                    onTap: preview
+                        ? null
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => FortuneWizardScreen(
+                                  category: FortuneCategory.all[index],
                                 ),
-                              );
-                            },
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(item.icon, size: 36, color: AppColors.crimson),
-                            const SizedBox(height: 10),
-                            Text(
-                              item.label,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.ink,
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                            );
+                          },
                   );
                 },
               ),
@@ -243,6 +266,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       ),
     ),
     );
+  }
+
+  void _toggleCurrencyHint(CurrencyKind kind) {
+    setState(() => _currencyHint = _currencyHint == kind ? null : kind);
   }
 
   bool _passOn(AppUser? user) {
@@ -467,7 +494,100 @@ class _HomeShellState extends ConsumerState<HomeShell> {
 }
 
 class _MenuItem {
-  const _MenuItem(this.label, this.icon);
+  const _MenuItem(this.label, this.icon, this.hanja);
   final String label;
   final IconData icon;
+  final String hanja;
+}
+
+class _MenuTile extends StatefulWidget {
+  const _MenuTile({required this.item, required this.order, required this.onTap});
+
+  final _MenuItem item;
+  final int order;
+  final VoidCallback? onTap;
+
+  @override
+  State<_MenuTile> createState() => _MenuTileState();
+}
+
+class _MenuTileState extends State<_MenuTile> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 420 + widget.order * 70),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) => Opacity(
+        opacity: value,
+        child: Transform.translate(offset: Offset(0, (1 - value) * 18), child: child),
+      ),
+      child: AnimatedScale(
+        scale: _pressed ? 0.96 : 1,
+        duration: const Duration(milliseconds: 110),
+        child: Material(
+          color: const Color(0xFFFFF8EE).withValues(alpha: 0.62),
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: AppColors.gold.withValues(alpha: 0.5)),
+          ),
+          child: InkWell(
+            onTap: widget.onTap,
+            onHighlightChanged: (v) => setState(() => _pressed = v),
+            child: Stack(
+              children: [
+                Positioned(
+                  right: -6,
+                  bottom: -14,
+                  child: Text(
+                    item.hanja,
+                    style: TextStyle(
+                      fontSize: 78,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.crimson.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.crimson.withValues(alpha: 0.08),
+                            border: Border.all(color: AppColors.crimson.withValues(alpha: 0.25)),
+                          ),
+                          child: Icon(item.icon, size: 30, color: AppColors.crimson),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          item.label,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -18,7 +18,8 @@ class AppTheme {
     );
 
     return base.copyWith(
-      scaffoldBackgroundColor: AppColors.beige,
+      // 모든 화면은 HanjiBackground 위에 그린다.
+      scaffoldBackgroundColor: Colors.transparent,
       colorScheme: ColorScheme.light(
         primary: AppColors.crimson,
         secondary: AppColors.gold,
@@ -28,9 +29,11 @@ class AppTheme {
         onSurface: AppColors.ink,
       ),
       appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.beige,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
         foregroundColor: AppColors.ink,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
           color: AppColors.ink,
@@ -42,6 +45,10 @@ class AppTheme {
       textTheme: base.textTheme.apply(
         bodyColor: AppColors.inkSoft,
         displayColor: AppColors.ink,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFFFF8EE).withValues(alpha: 0.7),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(

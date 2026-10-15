@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/hanji_background.dart';
 import '../profile/member_edit_screen.dart';
 import '../profile/member_repository.dart';
 import '../profile/profile_models.dart';
@@ -240,20 +241,23 @@ class _FortuneWizardScreenState extends ConsumerState<FortuneWizardScreen> {
   @override
   Widget build(BuildContext context) {
     final members = ref.watch(membersProvider).asData?.value ?? const <Member>[];
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.category.label)),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text('부적 1개를 사용합니다.', style: TextStyle(color: AppColors.inkSoft)),
-          const SizedBox(height: 16),
-          ..._fields(members),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: _busy ? null : _submit,
-            child: Text(_id == 'naming' || _id == 'thing_name' ? '이름 받기' : '운세 보기'),
-          ),
-        ],
+    return HanjiBackground(
+      calm: true,
+      child: Scaffold(
+        appBar: AppBar(title: Text(widget.category.label)),
+        body: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            const Text('부적 1개를 사용합니다.', style: TextStyle(color: AppColors.inkSoft)),
+            const SizedBox(height: 16),
+            ..._fields(members),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _busy ? null : _submit,
+              child: Text(_id == 'naming' || _id == 'thing_name' ? '이름 받기' : '운세 보기'),
+            ),
+          ],
+        ),
       ),
     );
   }

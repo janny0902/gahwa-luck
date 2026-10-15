@@ -86,7 +86,7 @@ String? _questionText(dynamic item) {
 }
 
 bool _isEasyFollowup(String question) {
-  if (question.isEmpty || question.length > 28) return false;
+  if (question.isEmpty || question.length > 32) return false;
   return !_hardFollowupTerms.any(question.contains);
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/hanji_background.dart';
 import '../auth/auth_providers.dart';
 import 'hanja_name_section.dart';
 import 'member_repository.dart';
@@ -129,7 +130,9 @@ class _MemberEditScreenState extends ConsumerState<MemberEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return HanjiBackground(
+      calm: true,
+      child: Scaffold(
       appBar: AppBar(title: Text(_isEdit ? '가족·지인 수정' : '가족·지인 추가')),
       body: ListView(
         padding: const EdgeInsets.all(20),
@@ -247,6 +250,7 @@ class _MemberEditScreenState extends ConsumerState<MemberEditScreen> {
                 : Text(_isEdit ? '저장' : '추가하기'),
           ),
         ],
+      ),
       ),
     );
   }
